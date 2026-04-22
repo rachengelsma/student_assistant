@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Student Assistant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+<style>
+  :root{
+    --prts-red: #DA2037;
+    --prts-red-deep: #b81a2d;
+    --prts-red-soft: #f9e3e6;
+    --ink: #1C1C1C;
+    --ink-2: #3a3835;
+    --ink-3: #6b6865;
+    --ink-4: #9a9794;
+    --bg: #fbfaf8;
+    --panel: #f4f2ee;
+    --panel-hover: #e9e5dd;
+    --line: #e8e4dd;
+  }
+  *{ box-sizing: border-box; }
+  html, body{ margin:0; padding:0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: 'Inter', system-ui, sans-serif;}
+  button{ font-family: inherit; }
+
+  .app{ display: flex; height: 100%; font-size: 14px; }
+
+  /* =========================== SIDEBAR =========================== */
+  .sidebar{
+    width: 260px; flex-shrink: 0; background: var(--panel);
+    border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 14px;
+  }
+  .sidebar .new{
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 13px; font-weight: 500; cursor: pointer; background: #fff; color: var(--ink);
+  }
+  .sidebar .new:hover{ background: #fafaf8; }
+  .sidebar .sec-label{
+    font-family: 'Inter', sans-serif; font-size: 10px; color: var(--ink-3);
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 14px 12px 6px; font-weight: 500;
+  }
+  .sidebar .conv{
+    padding: 8px 12px; font-size: 13px; color: var(--ink-2); border-radius: 8px; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sidebar .conv:hover{ background: var(--panel-hover);}
+  .sidebar .conv.active{ background: var(--panel-hover); color: var(--ink);}
+  .sidebar .foot{
+    margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2);
+  }
+  .sidebar .foot .av{
+    width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: white;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;
+  }
+
+  /* =========================== MAIN =========================== */
+  .main{ flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative;}
+  .main-header{
+    height: 56px; border-bottom: 1px solid var(--line); background: var(--bg);
+    display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0;
+  }
+  .main-header .logo-s{
+    width: 32px; height: 32px; border-radius: 50%; background: var(--prts-red);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .main-header .logo-s img{ width: 72%; height: 72%; object-fit: contain;}
+  .main-header .t h4{
+    margin: 0; font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  .main-header .t .sub{ font-size: 11px; color: var(--ink-3); margin-top: 1px;}
+
+  /* =========================== EMPTY STATE =========================== */
+  #empty-state{
+    position: absolute; inset: 56px 0 0 0;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 0 32px;
+    pointer-events: auto;
+    transition: opacity 260ms ease;
+  }
+  #empty-state.fade{ opacity: 0; pointer-events: none;}
+  .empty-inner{ max-width: 580px; margin: 0 auto; width: 100%; }
+  .empty-inner h1{
+    font-family: 'Fraunces', serif; font-weight: 500; font-size: 44px;
+    line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 14px;
+  }
+  .empty-inner h1 em{ font-style: italic; color: var(--prts-red);}
+  .empty-inner p{
+    margin: 0 0 28px; color: var(--ink-3); font-size: 14.5px; line-height: 1.55;
+  }
+  .chip-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .chip{
+    background: #fff; border: 1px solid var(--line); padding: 13px 14px;
+    border-radius: 12px; cursor: pointer; font-family: inherit;
+    display: flex; align-items: flex-start; gap: 10px; text-align: left;
+    transition: border-color 150ms ease, transform 150ms ease;
+  }
+  .chip:hover{ border-color: var(--prts-red); transform: translateY(-1px);}
+  .chip .ico{
+    width: 26px; height: 26px; border-radius: 7px;
+    background: var(--prts-red-soft); color: var(--prts-red);
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .chip .ct b{ display: block; font-size: 13px; font-weight: 600; margin-bottom: 2px; color: var(--ink);}
+  .chip .ct span{ font-size: 12px; color: var(--ink-3); line-height: 1.4;}
+
+  /* =========================== WEBCHAT =========================== */
+  #webchat{
+    flex: 1; min-height: 0; background: var(--bg);
+  }
+
+  /* Hide Web Chat defaults that don't fit the Scholar aesthetic */
+  .webchat__basic-transcript{ background: var(--bg) !important; }
+  /* Smooth avatars to circles matching our header logo */
+  .webchat__bubble--from-user + .webchat__imageAvatar,
+  .webchat__imageAvatar { border-radius: 50% !important; }
+
+  /* Bot bubble */
+  .webchat__bubble:not(.webchat__bubble--from-user) .webchat__bubble__content{
+    background: #fff !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 16px 16px 16px 4px !important;
+    padding: 2px 4px;
+  }
+  .webchat__bubble:not(.webchat__bubble--from-user) .webchat__text-content__markdown{
+    font-family: 'Inter', system-ui, sans-serif !important;
+    font-size: 14px !important; line-height: 1.6 !important; color: var(--ink) !important;
+  }
+  .webchat__bubble--from-user .webchat__bubble__content{
+    border-radius: 16px 16px 4px 16px !important;
+  }
+
+  /* Send box */
+  .webchat__send-box{
+    background: var(--bg) !important;
+    border-top: 1px solid var(--line) !important;
+    padding: 14px 28px 18px !important;
+  }
+  .webchat__send-box-text-box{
+    background: #fff !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 22px !important;
+    max-width: 720px; margin: 0 auto;
+  }
+  .webchat__send-box-text-box__input{
+    font-family: 'Inter', sans-serif !important; font-size: 14px !important; color: var(--ink) !important;
+  }
+  .webchat__send-box-text-box__input::placeholder{ color: var(--ink-4) !important; }
+
+  /* Transcript width cap */
+  .webchat__basic-transcript__scrollable{ padding: 24px 28px 10px !important; }
+
+  /* ============== CITATIONS — style the native <details>/<summary> ============== */
+  /* The bot renders sources as <details class="webchat__link-definitions">.
+     We force it closed by default and restyle both the summary and list. */
+  .webchat__link-definitions{
+    margin: 6px 0 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 720px;
+  }
+  .webchat__link-definitions__header{
+    list-style: none !important;
+    cursor: pointer;
+    padding: 4px 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 5px;
+    width: auto !important;
+    color: var(--ink-3) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 11.5px !important;
+    letter-spacing: 0.01em;
+    transition: color 150ms ease;
+  }
+  .webchat__link-definitions__header::-webkit-details-marker{ display: none; }
+  .webchat__link-definitions__header:hover{ color: var(--prts-red) !important;}
+  .webchat__link-definitions__header-text{
+    font-weight: 500 !important; color: inherit !important;
+    font-family: inherit !important; font-size: inherit !important;
+  }
+  .webchat__link-definitions__header-filler{ display: none !important;}
+  /* Rotate the native chevron SVG */
+  .webchat__link-definitions__header svg{
+    width: 10px !important; height: 10px !important;
+    transition: transform 180ms ease;
+    color: currentColor !important;
+  }
+  .webchat__link-definitions[open] .webchat__link-definitions__header svg{
+    transform: rotate(90deg);
+  }
+  /* The expanded list — restyle cards */
+  .webchat__link-definitions__list{
+    margin-top: 8px !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border: 0 !important;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .webchat__link-definitions__list-item{
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+  }
+  .webchat__link-definitions__list-item-box{
+    background: #fff !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 10px !important;
+    padding: 8px 10px !important;
+    width: 100% !important;
+    text-align: left !important;
+    cursor: pointer;
+    transition: border-color 150ms ease;
+    display: flex !important;
+    align-items: center;
+  }
+  .webchat__link-definitions__list-item-box:hover{ border-color: var(--prts-red) !important;}
+  .webchat__link-definitions__list-item-body{
+    display: flex !important; align-items: center; gap: 10px;
+    padding: 0 !important; background: transparent !important;
+  }
+  .webchat__link-definitions__badge{
+    width: 18px !important; height: 18px !important;
+    background: var(--prts-red-soft) !important;
+    color: var(--prts-red) !important;
+    border-radius: 4px !important;
+    font-size: 10.5px !important; font-weight: 600 !important;
+    font-family: 'Fraunces', serif !important;
+    display: flex !important; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .webchat__link-definitions__list-item-main-text,
+  .webchat__link-definitions__list-item-text{
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important; color: var(--ink-2) !important;
+    line-height: 1.4 !important;
+  }
+
+  /* ============== HIDE BUILT-IN TYPING INDICATOR (three dots) ============== */
+  /* Copilot Studio renders a typing indicator bubble while the bot is preparing
+     its response. We hide it because our own highlighter "thinking…" serves
+     the same purpose. */
+  .webchat__typing-indicator,
+  .webchat__typingIndicator,
+  [class*="typing-indicator"],
+  [class*="typingIndicator"]{
+    display: none !important;
+  }
+
+  /* Bot avatar */
+  .webchat__imageAvatar,
+  .webchat__defaultAvatar{
+    background: var(--prts-red) !important;
+  }
+
+  /* =========================== THINKING INDICATOR =========================== */
+  #sa-thinking{
+    position: absolute; left: 0; right: 0; bottom: 88px;
+    display: none; justify-content: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #sa-thinking.on{ display: flex;}
+  #sa-thinking .sa-hl{
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; color: var(--ink-2);
+    position: relative; padding: 2px 2px; line-height: 1.2;
+  }
+  #sa-thinking .sa-hl::before{
+    content: ''; position: absolute; left: -2px; top: 2px; bottom: 2px;
+    width: 0; background: rgba(218,32,55,0.16);
+    animation: sa-hl-swipe 1.8s ease-in-out infinite;
+    z-index: -1; border-radius: 2px;
+  }
+  #sa-thinking .sa-hl span{ position: relative; z-index: 1;}
+  @keyframes sa-hl-swipe {
+    0%   { width: 0; left: -2px; }
+    50%  { width: calc(100% + 4px); left: -2px; }
+    100% { width: 0; left: 100%; }
+  }
+
+  /* =========================== TYPEWRITER CARET =========================== */
+  .tw-caret{
+    display: inline-block;
+    width: 0.5em; height: 1em;
+    background: var(--ink);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: tw-blink 1s steps(2, start) infinite;
+  }
+  @keyframes tw-blink{ to{ visibility: hidden; } }
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <button class="new" id="new-chat-btn">
+      <span style="display:flex; align-items:center; gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        New conversation
+      </span>
+    </button>
+    <div class="sec-label">Today</div>
+    <div class="conv active">New conversation</div>
+    <div class="sec-label">Recent</div>
+    <div class="conv">Attendance policy</div>
+    <div class="conv">Finals schedule</div>
+    <div class="conv">Library hours during break</div>
+    <div class="conv">Thesis formatting</div>
+    <div class="conv">Housing for married students</div>
+    <div class="foot">
+      <div class="av">JS</div>
+      <div>James Stewart</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <section class="main">
+    <div class="main-header">
+      <div class="logo-s"><img src="assets/prts-logo.png" alt="" /></div>
+      <div class="t">
+        <h4>Student Assistant</h4>
+        <div class="sub">Puritan Reformed Theological Seminary</div>
+      </div>
+    </div>
+
+    <!-- Empty state (shown until first message sent) -->
+    <div id="empty-state">
+      <div class="empty-inner">
+        <h1>Good morning.<br/>What do you <em>need</em> to know?</h1>
+        <p>I know the student handbook inside and out — ask me about policies, deadlines, the library, housing, chapel, and anything else about life at PRTS.</p>
+        <div class="chip-grid">
+          <button class="chip" data-prompt="What is the chapel and class attendance policy?"><span class="ico">Aa</span><span class="ct"><b>Attendance policy</b><span>Chapel and class attendance requirements</span></span></button>
+          <button class="chip" data-prompt="When do finals start this semester and what is the academic calendar?"><span class="ico">§</span><span class="ct"><b>Academic calendar</b><span>Finals, breaks, and key deadlines</span></span></button>
+          <button class="chip" data-prompt="What are the thesis formatting requirements and submission process?"><span class="ico">✎</span><span class="ct"><b>Thesis &amp; papers</b><span>Formatting standards and submission process</span></span></button>
+          <button class="chip" data-prompt="Tell me about campus life — housing, dining, and student services."><span class="ico">⌂</span><span class="ct"><b>Campus life</b><span>Housing, dining, and student services</span></span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Web Chat mount point -->
+    <div id="webchat" role="main"></div>
+  </section>
+</div>
+
+<script>
+  // ========= CONFIG =========
+  const tokenEndpoint = 'https://default61d6eb67cbe542ee8a1373c46652bd.71.environment.api.powerplatform.com/powervirtualagents/botsbyschema/cr2ce_askAdrian/directline/token?api-version=2022-03-01-preview';
+
+  const styleOptions = {
+    accent: '#DA2037',
+    backgroundColor: 'transparent',
+    bubbleBackground: '#ffffff',
+    bubbleBorderColor: '#e8e4dd',
+    bubbleBorderRadius: 16,
+    bubbleBorderWidth: 1,
+    bubbleFromUserBackground: '#1C1C1C',
+    bubbleFromUserTextColor: '#ffffff',
+    bubbleFromUserBorderRadius: 16,
+    bubbleTextColor: '#1C1C1C',
+    sendBoxBackground: 'transparent',
+    sendBoxTextColor: '#1C1C1C',
+    sendBoxBorderTop: 'solid 1px #e8e4dd',
+    sendBoxPlaceholderColor: '#9a9794',
+    sendBoxButtonColor: '#DA2037',
+    sendBoxButtonColorOnHover: '#b81a2d',
+    sendBoxButtonColorOnFocus: '#b81a2d',
+    sendBoxHeight: 50,
+    suggestedActionBackground: 'white',
+    suggestedActionBorderColor: '#DA2037',
+    suggestedActionBorderRadius: 20,
+    suggestedActionTextColor: '#DA2037',
+    suggestedActionBorderWidth: 1.5,
+    timestampColor: '#9a9794',
+    botAvatarBackgroundColor: '#DA2037',
+    botAvatarImage: 'assets/prts-logo.png',
+    userAvatarBackgroundColor: '#1C1C1C',
+    userAvatarInitials: 'JS',
+    avatarSize: 32,
+    avatarBorderRadius: '50%',
+    hideUploadButton: true,
+    groupTimestamp: 300000,
+    rootHeight: '100%',
+    rootWidth: '100%'
+  };
+
+  /* =========================================================================
+     TYPEWRITER — animates new bot bubbles only; preserves markdown & history
+     ========================================================================= */
+  const CHAR_DELAY_MS = 22;
+  const seenBubbles = new WeakSet();
+  let existingBubblesSnapshotted = false;
+
+  function isBotBubble(activity) {
+    return activity && !activity.querySelector('.webchat__bubble--from-user');
+  }
+
+  function hookTypewriter(root) {
+    const activities = root.querySelectorAll('.webchat__basic-transcript__activity');
+    if (!existingBubblesSnapshotted) {
+      activities.forEach(a => {
+        const body = a.querySelector('.webchat__text-content__markdown, .webchat__render-markdown--message-activity');
+        if (body) seenBubbles.add(body);
+      });
+      existingBubblesSnapshotted = true;
+      return;
+    }
+    activities.forEach(activity => {
+      if (!isBotBubble(activity)) return;
+      const body = activity.querySelector('.webchat__text-content__markdown, .webchat__render-markdown--message-activity');
+      if (!body) return;
+      if (seenBubbles.has(body)) return;
+      const txt = (body.textContent || '').trim();
+      if (!txt) return;
+      seenBubbles.add(body);
+      attachTypewriter(body);
+    });
+  }
+
+  function attachTypewriter(bubble) {
+    const chars = [];
+    function wrapTextNodes(node) {
+      const kids = Array.from(node.childNodes);
+      for (const child of kids) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const t = child.nodeValue;
+          if (!t.length) continue;
+          const frag = document.createDocumentFragment();
+          for (const ch of t) {
+            const s = document.createElement('span');
+            s.className = 'tw-ch';
+            s.style.display = 'none';
+            s.textContent = ch;
+            chars.push(s);
+            frag.appendChild(s);
+          }
+          node.replaceChild(frag, child);
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          child.dataset.twHidden = '1';
+          child.style.display = 'none';
+          wrapTextNodes(child);
+        }
+      }
+    }
+    wrapTextNodes(bubble);
+    if (!chars.length) return;
+    hideThinking();
+
+    let i = 0;
+    const caret = document.createElement('span');
+    caret.className = 'tw-caret';
+    function revealAncestors(span) {
+      let n = span.parentNode;
+      while (n && n !== bubble) {
+        if (n.dataset && n.dataset.twHidden === '1') {
+          n.style.display = '';
+          delete n.dataset.twHidden;
+        }
+        n = n.parentNode;
+      }
+    }
+    function placeCaretAfter(span) {
+      if (!span || !span.parentNode) return;
+      if (caret.parentNode) caret.parentNode.removeChild(caret);
+      span.parentNode.insertBefore(caret, span.nextSibling);
+    }
+    function tick() {
+      if (i >= chars.length) {
+        if (caret.parentNode) caret.parentNode.removeChild(caret);
+        return;
+      }
+      const s = chars[i];
+      revealAncestors(s);
+      s.style.display = '';
+      placeCaretAfter(s);
+      i++;
+      setTimeout(tick, CHAR_DELAY_MS);
+    }
+    tick();
+  }
+
+  /* =========================================================================
+     THINKING INDICATOR — highlighter sweep over italic serif "thinking..."
+     ========================================================================= */
+  function ensureThinkingEl() {
+    let el = document.getElementById('sa-thinking');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'sa-thinking';
+    el.innerHTML = '<span class="sa-hl"><span>thinking…</span></span>';
+    document.querySelector('.main').appendChild(el);
+    return el;
+  }
+  function showThinking() { ensureThinkingEl().classList.add('on'); }
+  function hideThinking() {
+    const el = document.getElementById('sa-thinking');
+    if (el) el.classList.remove('on');
+  }
+
+  /* =========================================================================
+     EMPTY-STATE HANDLING — fade out on first user send, back in on "new chat"
+     ========================================================================= */
+  const emptyEl = document.getElementById('empty-state');
+  let firstMessageSent = false;
+  function fadeEmpty() {
+    if (firstMessageSent) return;
+    firstMessageSent = true;
+    emptyEl.classList.add('fade');
+  }
+
+  /* =========================================================================
+     BEHAVIOR — send-box hooks, chip → send, thinking triggers
+     ========================================================================= */
+  let sendInput = null;
+  let directLineRef = null;
+
+  /* Force the native citations <details> closed by default (Copilot Studio opens it) */
+  function collapseCitations(root) {
+    root.querySelectorAll('details.webchat__link-definitions').forEach(d => {
+      if (d.dataset.saCollapsed === '1') return;
+      d.open = false;
+      d.dataset.saCollapsed = '1';
+    });
+  }
+
+  function attachBehavior() {
+    const webchatEl = document.getElementById('webchat');
+    const observer = new MutationObserver(() => {
+      const input = webchatEl.querySelector('input[type="text"], textarea');
+      if (input && !sendInput) {
+        sendInput = input;
+      }
+      hookTypewriter(webchatEl);
+      collapseCitations(webchatEl);
+    });
+    observer.observe(webchatEl, { childList: true, subtree: true });
+  }
+
+  function wireThinkingTriggers() {
+    const webchatEl = document.getElementById('webchat');
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        const input = webchatEl.querySelector('input[type="text"], textarea');
+        if (input && document.activeElement === input && input.value.trim()) {
+          fadeEmpty();
+          showThinking();
+        }
+      }
+    }, true);
+    function maybeSend(e) {
+      if (e.target.closest('button[type="submit"], button[aria-label="Send"]')) {
+        const input = webchatEl.querySelector('input[type="text"], textarea');
+        if (input && input.value.trim()) {
+          fadeEmpty();
+          showThinking();
+        }
+      }
+    }
+    webchatEl.addEventListener('click', maybeSend, true);
+    webchatEl.addEventListener('touchend', maybeSend, true);
+  }
+
+  function wireChips() {
+    document.querySelectorAll('.chip[data-prompt]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const prompt = chip.getAttribute('data-prompt');
+        if (!sendInput) {
+          // try again shortly — chat not mounted yet
+          setTimeout(() => wireChips(), 300);
+          return;
+        }
+        // Set the input value and dispatch a send via React's native setter
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+                                    || Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+        nativeInputValueSetter?.call(sendInput, prompt);
+        sendInput.dispatchEvent(new Event('input', { bubbles: true }));
+        // Click the send button
+        const btn = document.querySelector('button[type="submit"], button[aria-label="Send"]');
+        if (btn) {
+          fadeEmpty();
+          showThinking();
+          btn.click();
+        }
+      });
+    });
+  }
+
+  /* =========================================================================
+     INIT
+     ========================================================================= */
+  async function initWebChat() {
+    try {
+      const res = await fetch(tokenEndpoint);
+      const { token } = await res.json();
+      const directLine = window.WebChat.createDirectLine({ token });
+      directLineRef = directLine;
+      window.WebChat.renderWebChat({ directLine, styleOptions }, document.getElementById('webchat'));
+      attachBehavior();
+      ensureThinkingEl();
+      wireThinkingTriggers();
+      // chip wiring after the input exists
+      setTimeout(wireChips, 400);
+    } catch (err) {
+      console.error('WebChat init failed:', err);
+      document.getElementById('webchat').innerHTML =
+        '<p style="padding:20px;text-align:center;color:#DA2037;font-family:Inter,sans-serif;">Unable to load chat. Please refresh the page.</p>';
+    }
+  }
+
+  initWebChat();
+
+  // New chat: reload to reset conversation
+  document.getElementById('new-chat-btn').addEventListener('click', () => {
+    if (confirm('Start a new conversation? The current chat will be cleared.')) {
+      location.reload();
+    }
+  });
+</script>
+</body>
+</html>
